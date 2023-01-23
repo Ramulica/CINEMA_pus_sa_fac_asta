@@ -4,6 +4,8 @@ import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
 from tkinter import ttk
+import os
+from PIL import Image, ImageTk
 
 
 class Movies:
@@ -24,7 +26,6 @@ class Movies:
                     movie_data = self.get_movie_cast(soup)
                     return movie_data
 
-
             except requests.exceptions.RequestException as e:
                 print('exceptie')
                 SystemExit(e)
@@ -34,13 +35,12 @@ class Movies:
                 SystemExit(e)
             inc += 1
 
-
     @staticmethod
     def get_movie_cast(soup):
         output = []
 
         for item in soup.find_all("ul", {'class': "cast"}):
-            movie_cast = {"director": [], "actors": [], "movie_genre": [], "distributor": []}
+            movie_cast = {"director": [], "actors": [], "movie_genre": [], "distributor": [], "image_url": []}
 
             for item_1 in item.find_all("li"):
 
@@ -54,7 +54,21 @@ class Movies:
                     elif "Filme" in actor["title"]:
                         movie_cast["movie_genre"].append(actor["title"][actor["title"].find(" ") + 1::])
             output.append(movie_cast)
+
+        all_links = []
+        for movie in soup.find_all("li", {"class": "movie"}):
+            links = []
+            image_tags = movie.find_all('img')
+            for image_tag in image_tags:
+                links.append(image_tag['src'])
+            all_links.append(links[0])
+
+        for i, item in enumerate(output):
+            item["image_url"].append(all_links[i])
+
         titles = [item.text for item in soup.find_all('h2')]
+
+        print(output)
         return dict(zip(titles, output))
 
 
@@ -64,7 +78,7 @@ class Interface:
         self.data = data
 
         self.root = tk.Tk()
-        self.root.geometry("1000x1000")
+        self.root.geometry("1130x1000")
 
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=1)
@@ -91,20 +105,62 @@ class Interface:
 
     def create_text_labels(self):
         row_count = 1
+        bg_color = ["#E7D39C", "#CCB677"]
+        bg_color_counter = 0
         for k, v in self.data.items():
+            usable_frame = tk.Frame(self.second_frame)
+            usable_frame.configure(bg=bg_color[bg_color_counter])
+            usable_frame.grid(row=row_count)
             row = f"\n{k}\n\n"
             for k_1, v_1 in v.items():
-                row += f"{k_1}: {' '.join(v_1)}\n"
+                if k_1 != "image_url":
+                    row += f"{k_1}: {' '.join(v_1)}\n"
+                else:
+                    main_path = os.getcwd()
+                    os.chdir("movie_images")
+                    self.download_image(v_1[0], f"{row_count}_image.png")
+                    movie_image = ImageTk.PhotoImage(file=f"{row_count}_image.png")
+                    movie_photo = tk.Label(usable_frame, image=movie_image, bg=bg_color[bg_color_counter])
+                    movie_photo.photo = movie_image
+                    movie_photo.grid(column=0, row=1, padx=20, sticky=tk.W, rowspan=2)
+                    os.chdir(main_path)
+
             print(row)
-            tk.Label(self.second_frame, text=row, font=("Helvetica", 14), justify="left").\
-                grid(column=0, row=row_count, padx=20, sticky=tk.W)
-            tk.Button(self.second_frame, text="Watched").grid(column=1, row=row_count, sticky=tk.W)
-            tk.Button(self.second_frame, text="Watched").grid(column=1, row=row_count, sticky=tk.W)
-            row_count += 1
+
+            tk.Label(usable_frame, text=row, font=("Arial", 14), justify="left", bg=bg_color[bg_color_counter], anchor="w",
+                     width=70).grid(column=1, row=1, padx=20, sticky=tk.W, rowspan=2)
+            tk.Button(usable_frame, text="Watched").grid(column=2, row=1, sticky=tk.W, padx=20)
+            tk.Button(usable_frame, text="Not Watched").grid(column=2, row=2, sticky=tk.W, padx=20)
+            row_count += 2
+            if bg_color_counter == 0:
+                bg_color_counter = 1
+            else:
+                bg_color_counter = 0
+
+    @staticmethod
+    def download_image(url, file_name):
+
+        # Send GET request
+        response = requests.get(url)
+
+        # Save the image
+        if response.status_code == 200:
+
+            with open(file_name, "wb") as f:
+                f.write(response.content)
+
+        else:
+            print(response.status_code)
+
 
 if __name__ == "__main__":
     m = Movies('https://www.cinemagia.ro/filme-2022/nota/', 1)
     Interface(m.get_movies())
+    main_path = os.getcwd()
+    os.chdir("movie_images")
+    for item in os.listdir():
+        print(item)
+    os.chdir(main_path)
 
 
 
