@@ -78,7 +78,7 @@ class Interface:
         self.window_refresh_heck = 801
         self.data = data
         self.row_count = 2
-        self.pg_count = 0
+        self.pg_count = 2
         self.searched_txt = ""
 
         self.root = tk.Tk()
@@ -106,7 +106,7 @@ class Interface:
         self.textbox = tk.Entry()
         self.search_frame()
 
-        self.create_text_labels(self.data[0], False)
+        self.create_text_labels({**self.data[0], **self.data[1], **self.data[2]}, False)
 
         self.root.mainloop()
 
@@ -206,7 +206,7 @@ class Interface:
         final_frame.grid(row=self.row_count)
         if if_searched:
             lode_more_button = tk.Button(final_frame, text="Go back", font=("Arial", 14),
-                                         command=lambda: [final_frame.destroy(), self.create_text_labels(self.data[self.pg_count], False),
+                                         command=lambda: [final_frame.destroy(), self.create_text_labels({**self.data[0], **self.data[1], **self.data[2]}, False),
                                                           self.root.geometry(f"1130x{self.window_refresh_heck}")])
         else:
             lode_more_button = tk.Button(final_frame, text="Load more movies", font=("Arial", 14),
