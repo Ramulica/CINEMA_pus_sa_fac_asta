@@ -15,6 +15,7 @@ class Movies:
 
     def get_movies(self):
         inc = 1
+        movie_data = []
         while inc <= self.pages:
             payload = {'pn': inc}
             try:
@@ -23,8 +24,8 @@ class Movies:
                 if r.ok:
 
                     soup = BeautifulSoup(r.content, 'html.parser')
-                    movie_data = self.get_movie_cast(soup)
-                    return movie_data
+                    movie_data += [self.get_movie_cast(soup)]
+
 
             except requests.exceptions.RequestException as e:
                 print('exceptie')
@@ -34,6 +35,9 @@ class Movies:
                 print('exceptie')
                 SystemExit(e)
             inc += 1
+
+        return movie_data
+
 
     @staticmethod
     def get_movie_cast(soup):
@@ -68,17 +72,19 @@ class Movies:
 
         titles = [item.text for item in soup.find_all('h2')]
 
-        print(output)
         return dict(zip(titles, output))
 
 
 class Interface:
     def __init__(self, data):
 
+        self.window_refresh_heck = 801
         self.data = data
+        self.row_count = 1
+        self.pg_count = 0
 
         self.root = tk.Tk()
-        self.root.geometry("1130x1000")
+        self.root.geometry("1130x800")
 
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=1)
@@ -96,46 +102,59 @@ class Interface:
         self.second_frame = tk.Frame(self.canvas)
         self.canvas.create_window((0, 0), window=self.second_frame, anchor="nw")
 
-        self.create_text_labels()
+        self.create_text_labels(0)
 
         self.root.mainloop()
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    def create_text_labels(self):
-        row_count = 1
+    def create_text_labels(self, pg_number):
+
         bg_color = ["#E7D39C", "#CCB677"]
         bg_color_counter = 0
-        for k, v in self.data.items():
+        for k, v in self.data[pg_number].items():
             usable_frame = tk.Frame(self.second_frame)
             usable_frame.configure(bg=bg_color[bg_color_counter])
-            usable_frame.grid(row=row_count)
+            usable_frame.grid(row=self.row_count)
             row = f"\n{k}\n\n"
             for k_1, v_1 in v.items():
                 if k_1 != "image_url":
-                    row += f"{k_1}: {' '.join(v_1)}\n"
+                    row += f"{k_1}: {', '.join(v_1)}\n"
                 else:
                     main_path = os.getcwd()
                     os.chdir("movie_images")
-                    self.download_image(v_1[0], f"{row_count}_image.png")
-                    movie_image = ImageTk.PhotoImage(file=f"{row_count}_image.png")
+                    self.download_image(v_1[0], f"{self.row_count}_image.png")
+                    movie_image = ImageTk.PhotoImage(file=f"{self.row_count}_image.png")
                     movie_photo = tk.Label(usable_frame, image=movie_image, bg=bg_color[bg_color_counter])
                     movie_photo.photo = movie_image
                     movie_photo.grid(column=0, row=1, padx=20, sticky=tk.W, rowspan=2)
                     os.chdir(main_path)
 
-            print(row)
 
             tk.Label(usable_frame, text=row, font=("Arial", 14), justify="left", bg=bg_color[bg_color_counter], anchor="w",
                      width=70).grid(column=1, row=1, padx=20, sticky=tk.W, rowspan=2)
             tk.Button(usable_frame, text="Watched").grid(column=2, row=1, sticky=tk.W, padx=20)
             tk.Button(usable_frame, text="Not Watched").grid(column=2, row=2, sticky=tk.W, padx=20)
-            row_count += 2
+            self.row_count += 2
             if bg_color_counter == 0:
                 bg_color_counter = 1
             else:
                 bg_color_counter = 0
+        if self.window_refresh_heck == 801:
+            self.window_refresh_heck += 1
+        else:
+            self.window_refresh_heck -= 1
+
+        self.pg_count += 1
+
+        final_frame = tk.Frame(self.second_frame)
+        final_frame.configure(bg=bg_color[bg_color_counter])
+        final_frame.grid(row=self.row_count)
+        lode_more_button = tk.Button(final_frame, text="Load more movies", font=("Arial", 14),
+                                     command=lambda: [final_frame.destroy(), self.create_text_labels(self.pg_count),
+                                                      self.root.geometry(f"1130x{self.window_refresh_heck}")])
+        lode_more_button.pack()
 
     @staticmethod
     def download_image(url, file_name):
@@ -154,12 +173,13 @@ class Interface:
 
 
 if __name__ == "__main__":
-    m = Movies('https://www.cinemagia.ro/filme-2022/nota/', 1)
+    m = Movies('https://www.cinemagia.ro/filme-2022/nota/', 20)
+
     Interface(m.get_movies())
     main_path = os.getcwd()
     os.chdir("movie_images")
     for item in os.listdir():
-        print(item)
+        os.remove(item)
     os.chdir(main_path)
 
 
