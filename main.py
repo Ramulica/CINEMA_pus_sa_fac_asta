@@ -80,7 +80,7 @@ class Interface:
 
         self.window_refresh_heck = 801
         self.data = data
-        self.row_count = 1
+        self.row_count = 2
         self.pg_count = 0
 
         self.root = tk.Tk()
@@ -102,9 +102,26 @@ class Interface:
         self.second_frame = tk.Frame(self.canvas)
         self.canvas.create_window((0, 0), window=self.second_frame, anchor="nw")
 
+        self.title_frame()
+        self.search_frame()
+
         self.create_text_labels(0)
 
         self.root.mainloop()
+
+    def title_frame(self):
+
+        usable_frame = tk.Frame(self.second_frame)
+        usable_frame.configure(bg="#CCB677")
+        usable_frame.grid(row=0)
+        tk.Label(usable_frame, text="Movie picker\n", font=("Arial", 20), bg="#CCB677").pack(fill=tk.X, ipadx=20, ipady=20)
+
+    def search_frame(self):
+
+        usable_frame = tk.Frame(self.second_frame)
+        usable_frame.configure(bg="#CCB677")
+        usable_frame.grid(row=1)
+        tk.Entry(usable_frame, bg="#CCB677").pack(anchor=tk.E,  ipadx=20, ipady=20)
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -130,7 +147,6 @@ class Interface:
                     movie_photo.photo = movie_image
                     movie_photo.grid(column=0, row=1, padx=20, sticky=tk.W, rowspan=2)
                     os.chdir(main_path)
-
 
             tk.Label(usable_frame, text=row, font=("Arial", 14), justify="left", bg=bg_color[bg_color_counter], anchor="w",
                      width=70).grid(column=1, row=1, padx=20, sticky=tk.W, rowspan=2)
@@ -173,9 +189,12 @@ class Interface:
 
 
 if __name__ == "__main__":
-    m = Movies('https://www.cinemagia.ro/filme-2022/nota/', 20)
-
-    Interface(m.get_movies())
+    m_2022 = Movies('https://www.cinemagia.ro/filme-2022/nota/', 10)
+    m_2021 = Movies('https://www.cinemagia.ro/filme-2021/nota/', 10)
+    m_2020 = Movies('https://www.cinemagia.ro/filme-2020/nota/', 10)
+    m_2019 = Movies('https://www.cinemagia.ro/filme-2019/nota/', 10)
+    print(m_2022.get_movies())
+    Interface(m_2022.get_movies()[0:3] + m_2021.get_movies()[0:3] + m_2020.get_movies()[0:3] + m_2019.get_movies()[0:3])
     main_path = os.getcwd()
     os.chdir("movie_images")
     for item in os.listdir():
