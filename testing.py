@@ -1,11 +1,10 @@
-import pandas as pd
-import string
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
 from tkinter import ttk
 import os
-from PIL import Image, ImageTk
+from PIL import ImageTk
+import string
 
 
 class Movies:
@@ -26,7 +25,6 @@ class Movies:
                     soup = BeautifulSoup(r.content, 'html.parser')
                     movie_data += [self.get_movie_cast(soup)]
 
-
             except requests.exceptions.RequestException as e:
                 print('exceptie')
                 SystemExit(e)
@@ -37,7 +35,6 @@ class Movies:
             inc += 1
 
         return movie_data
-
 
     @staticmethod
     def get_movie_cast(soup):
@@ -80,8 +77,9 @@ class Interface:
 
         self.window_refresh_heck = 801
         self.data = data
-        self.row_count = 1
+        self.row_count = 2
         self.pg_count = 0
+        self.searched_txt = ""
 
         self.root = tk.Tk()
         self.root.geometry("1130x800")
@@ -95,25 +93,82 @@ class Interface:
         self.scroll_bar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
         self.scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.canvas.configure(yscrollcommand=self.scroll_bar.set)
+        self.canvas.configure(yscrollcommand=self.scroll_bar.set, bg="#666666")
         self.canvas.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
         self.second_frame = tk.Frame(self.canvas)
+        self.second_frame.configure(bg="#666666")
         self.canvas.create_window((0, 0), window=self.second_frame, anchor="nw")
 
-        self.create_text_labels(0)
+        self.title_frame()
+
+        self.textbox = tk.Entry()
+        self.search_frame()
+
+        self.create_text_labels(self.data[0], False)
 
         self.root.mainloop()
+
+    def get_entry_text(self):
+        self.row_count = 2
+        self.pg_count = 0
+        self.searched_txt = self.textbox.get()
+        print(self.searched_txt)
+        self.second_frame.destroy()
+
+        self.second_frame = tk.Frame(self.canvas)
+        self.second_frame.configure(bg="#666666")
+        self.canvas.create_window((0, 0), window=self.second_frame, anchor="nw")
+
+        self.title_frame()
+        self.search_frame()
+
+        self.filter_search_movies()
+        self.row_count = 2
+        self.pg_count = 0
+
+    def title_frame(self):
+
+        title_frame = tk.Frame(self.second_frame)
+        title_frame.configure(bg="#666666")
+        title_frame.grid(row=0)
+        tk.Label(title_frame, text="CINEMA pus sa fac asta", font=("Arial", 20, "bold"), bg="#666666", fg="white",
+                 width=63).pack(fill=tk.X, ipadx=20, ipady=20)
+
+    def search_frame(self):
+
+        usable_frame = tk.Frame(self.second_frame)
+        usable_frame.configure(bg="#666666")
+        usable_frame.grid(row=1)
+        tk.Label(usable_frame, text=f"Search movie:", anchor="e", bg="#666666", width=75,
+                 fg="white").grid(row=0, column=0)
+
+        self.textbox = tk.Entry(usable_frame, width=75)
+        self.textbox.grid(row=0, column=1)
+
+        search_button = tk.Button(usable_frame, text="Search", command=lambda: self.get_entry_text())
+        search_button.grid(row=0, column=2, padx=10, pady=10)
+
+    def filter_search_movies(self):
+        searched_movie = {}
+        for item in self.data:
+
+            for k, v in item.items():
+                if str.lower(self.searched_txt) in str.lower(k):
+                    searched_movie[k] = v
+        print(searched_movie)
+        self.create_text_labels(searched_movie, True)
+
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    def create_text_labels(self, pg_number):
+    def create_text_labels(self, data, if_searched):
 
         bg_color = ["#E7D39C", "#CCB677"]
         bg_color_counter = 0
-        for k, v in self.data[pg_number].items():
+        for k, v in data.items():
             usable_frame = tk.Frame(self.second_frame)
             usable_frame.configure(bg=bg_color[bg_color_counter])
             usable_frame.grid(row=self.row_count)
@@ -130,7 +185,6 @@ class Interface:
                     movie_photo.photo = movie_image
                     movie_photo.grid(column=0, row=1, padx=20, sticky=tk.W, rowspan=2)
                     os.chdir(main_path)
-
 
             tk.Label(usable_frame, text=row, font=("Arial", 14), justify="left", bg=bg_color[bg_color_counter], anchor="w",
                      width=70).grid(column=1, row=1, padx=20, sticky=tk.W, rowspan=2)
@@ -151,12 +205,19 @@ class Interface:
         final_frame = tk.Frame(self.second_frame)
         final_frame.configure(bg=bg_color[bg_color_counter])
         final_frame.grid(row=self.row_count)
-        lode_more_button = tk.Button(final_frame, text="Load more movies", font=("Arial", 14),
-                                     command=lambda: [final_frame.destroy(), self.create_text_labels(self.pg_count),
-                                                      self.root.geometry(f"1130x{self.window_refresh_heck}")])
+        if if_searched:
+            lode_more_button = tk.Button(final_frame, text="Go back", font=("Arial", 14),
+                                         command=lambda: [final_frame.destroy(), self.create_text_labels(self.data[self.pg_count], False),
+                                                          self.root.geometry(f"1130x{self.window_refresh_heck}")])
+        else:
+            lode_more_button = tk.Button(final_frame, text="Load more movies", font=("Arial", 14),
+                                         command=lambda: [final_frame.destroy(), self.create_text_labels(self.data[self.pg_count], False),
+                                                          self.root.geometry(f"1130x{self.window_refresh_heck}")])
         lode_more_button.pack()
 
     @staticmethod
+
+
     def download_image(url, file_name):
 
         # Send GET request
@@ -173,9 +234,12 @@ class Interface:
 
 
 if __name__ == "__main__":
-    m = Movies('https://www.cinemagia.ro/filme-2022/nota/', 20)
-
-    Interface(m.get_movies())
+    m_2022 = Movies('https://www.cinemagia.ro/filme-2022/nota/', 10)
+    m_2021 = Movies('https://www.cinemagia.ro/filme-2021/nota/', 10)
+    m_2020 = Movies('https://www.cinemagia.ro/filme-2020/nota/', 10)
+    m_2019 = Movies('https://www.cinemagia.ro/filme-2019/nota/', 10)
+    print(m_2022.get_movies())
+    Interface(m_2022.get_movies() + m_2021.get_movies() + m_2020.get_movies() + m_2019.get_movies())
     main_path = os.getcwd()
     os.chdir("movie_images")
     for item in os.listdir():
