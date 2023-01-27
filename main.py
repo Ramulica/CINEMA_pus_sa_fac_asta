@@ -5,6 +5,7 @@ from tkinter import ttk
 import os
 from PIL import ImageTk
 import string
+import sqlite3
 
 
 class Movies:
@@ -39,9 +40,12 @@ class Movies:
     @staticmethod
     def get_movie_cast(soup):
         output = []
+        rating = [item.text for item in soup.find_all('div', {'class': 'rating-cinemagia'})]
+        rating_inc = 0
+
 
         for item in soup.find_all("ul", {'class': "cast"}):
-            movie_cast = {"director": [], "actors": [], "movie_genre": [], "distributor": [], "image_url": []}
+            movie_cast = {"director": [], "actors": [], "movie_genre": [], "distributor": [], "image_url": [], "rating": []}
 
             for item_1 in item.find_all("li"):
 
@@ -54,6 +58,8 @@ class Movies:
                         movie_cast["distributor"].append(actor["title"][21::])
                     elif "Filme" in actor["title"]:
                         movie_cast["movie_genre"].append(actor["title"][actor["title"].find(" ") + 1::])
+            movie_cast['rating'].append(rating[rating_inc])
+            rating_inc += 1
             output.append(movie_cast)
 
         all_links = []
@@ -232,14 +238,67 @@ class Interface:
             print(response.status_code)
 
 
+class MovieSQL:
+    def __init__(self, movie_name, movie_dict):
+
+        self.movie_name = movie_name
+        self.movie_name = self.movie_name.replace('\'', '\'\'')
+        self.movie_director = ', '.join(movie_dict["director"])
+        self.movie_actors = ', '.join(movie_dict["actors"])
+        self.movie_genre = ', '.join(movie_dict["movie_genre"])
+        self.movie_distributor = ', '.join(movie_dict["distributor"])
+        self.movie_rating = ', '.join(movie_dict["rating"])
+
+    def write_data_in_sql(self):
+        con = sqlite3.connect("Movie_data.db")
+        cur = con.cursor()
+        create_command = """CREATE TABLE IF NOT EXISTS movies(
+                            Name TEXT,
+                            Director TEXT,
+                            Actors TEXT,
+                            Genre TEXT,
+                            Distributor TEXT,
+                            Rating,
+                            PRIMARY KEY(Name)
+                            );"""
+
+        cur.execute(create_command)
+
+        insert_command = f"""INSERT INTO movies VALUES('{self.movie_name}',
+                                                   '{self.movie_director}',
+                                                   '{self.movie_actors}',
+                                                   '{self.movie_genre}',
+                                                   '{self.movie_distributor}',
+                                                   '{self.movie_rating}');"""
+        cur.execute(insert_command)
+        con.commit()
+
+        con.close()
+
+
+
+
+
 if __name__ == "__main__":
     m_2022 = Movies('https://www.cinemagia.ro/filme-2022/nota/', 10)
     m_2021 = Movies('https://www.cinemagia.ro/filme-2021/nota/', 10)
     m_2020 = Movies('https://www.cinemagia.ro/filme-2020/nota/', 10)
     m_2019 = Movies('https://www.cinemagia.ro/filme-2019/nota/', 10)
+    print(m_2022.get_movies())
+    movie_list = m_2022.get_movies() + m_2021.get_movies() + m_2020.get_movies() + m_2019.get_movies()
+
     Interface(m_2022.get_movies() + m_2021.get_movies() + m_2020.get_movies() + m_2019.get_movies())
     main_path = os.getcwd()
     os.chdir("movie_images")
     for item in os.listdir():
         os.remove(item)
     os.chdir(main_path)
+    x = 1
+    for item in movie_list:
+        for k, v in item.items():
+            try:
+                movie_calss = MovieSQL(k, v)
+
+                movie_calss.write_data_in_sql()
+            except sqlite3.Error:
+                print(f"error: {k} couldn't be added")
