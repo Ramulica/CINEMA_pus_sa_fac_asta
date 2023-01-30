@@ -345,7 +345,6 @@ class MovieSQL:
 
         con.close()
 
-        print([item[0] for item in output_1])
         return [item[0] for item in output_1]
 
     @staticmethod
