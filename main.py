@@ -242,6 +242,23 @@ class Interface:
         movie = MovieSQL(t[0], t[1])
         movie.write_data_in_sql("movies", False)
 
+    def recommended_button_command(self):
+        global recommended_videos
+        self.row_count = 2
+        self.pg_count = 0
+        self.searched_txt = self.textbox.get()
+        self.second_frame.destroy()
+
+        self.second_frame = tk.Frame(self.canvas)
+        self.second_frame.configure(bg="#666666")
+        self.canvas.create_window((0, 0), window=self.second_frame, anchor="nw")
+
+        self.title_frame()
+        self.search_frame()
+
+        self.create_text_labels(recommended_videos, True)
+        self.row_count = 2
+        self.pg_count = 0
 
     @staticmethod
     def download_image(url, file_name):
@@ -285,8 +302,8 @@ class MovieSQL:
                             Actors TEXT,
                             Genre TEXT,
                             Distributor TEXT,
-                            Rating,
-                            Score,
+                            Rating REAL,
+                            Score INTEGER,
                             Image_URL,
                             PRIMARY KEY(Name)
                             );"""
@@ -306,6 +323,26 @@ class MovieSQL:
             print(f"error: {self.movie_name} couldn't be added")
         con.commit()
 
+        con.close()
+
+    @staticmethod
+    def create_movie_table():
+        con = sqlite3.connect("Movie_data.db")
+        cur = con.cursor()
+        create_command = f"""CREATE TABLE IF NOT EXISTS movies(
+                            Name TEXT,
+                            Director TEXT,
+                            Actors TEXT,
+                            Genre TEXT,
+                            Distributor TEXT,
+                            Rating REAL,
+                            Score INTEGER,
+                            Image_URL,
+                            PRIMARY KEY(Name)
+                            );"""
+
+        cur.execute(create_command)
+        con.commit()
         con.close()
 
     @staticmethod
@@ -367,7 +404,7 @@ class MovieSQL:
     @staticmethod
 
     def get_recommended_videos():
-        output = []
+        output = {}
         con = sqlite3.connect("Movie_data.db")
         cur = con.cursor()
 
@@ -377,17 +414,24 @@ class MovieSQL:
 
         con.close()
 
+        print("merge")
+
         for item in output_1:
             if item[0] not in MovieSQL.read_movies("movies"):
-                output.append({item[0]: {"director": [], "actors": [], "movie_genre": [], "distributor": [], "image_url": [],
-                          "rating": [], "score": 0}})
-
-        return output_1
+                output[item[0]] = {"director": item[1].split(", "), "actors": item[2].split(", "),
+                                         "movie_genre": item[3].split(", "), "distributor": item[4].split(", "),
+                                         "image_url": [item[7]],
+                                         "rating": [str(item[5])], "score": int(item[6])}
+            if len(output) == 20:
+                break
+        print(output)
+        return output
 
 
 
 
 if __name__ == "__main__":
+    MovieSQL.create_movie_table()
     button_list = []
     button_list_search = []
     update_table = True
@@ -398,7 +442,7 @@ if __name__ == "__main__":
     m_2019 = Movies('https://www.cinemagia.ro/filme-2019/nota/', 10)
 
     movie_list = m_2022.get_movies() + m_2021.get_movies() + m_2020.get_movies() + m_2019.get_movies()
-
+    print(movie_list)
 
     for item in movie_list:
         for k, v in item.items():
@@ -406,8 +450,7 @@ if __name__ == "__main__":
             movie.write_data_in_sql("all_movies", update_table)
             update_table = False
 
-    x = MovieSQL.get_recommended_videos()
-    print(x)
+    recommended_videos = MovieSQL.get_recommended_videos()
 
     Interface(movie_list)
     main_path = os.getcwd()
